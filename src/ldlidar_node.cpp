@@ -1,15 +1,16 @@
 #include <ldlidar_node.h>
 
 LD06::LD06()
-  : Node("ld06_node")
+  : Node("ld06_node"), updater_(this)
 {
   std::string topic_name = this->declare_parameter("topic_name", "scan");
   std::string port_name = this->declare_parameter("serial_port", ""); //TODO: Figure out what's the real port name
   std::string lidar_frame = this->declare_parameter("lidar_frame", "laser");
   float range_threshold = this->declare_parameter("range_threshold", 0.005);
+  this->declare_parameter<double>("diagnostic_tolerance", 0.1);
 
   lidar_ = new LiPkg;
-  lidar_pub_ = this->create_publisher<sensor_msgs::msg::LaserScan>(topic_name, 10);
+  auto pub = this->create_publisher<sensor_msgs::msg::LaserScan>(topic_name, 10);
 
   lidar_->SetLidarFrame(lidar_frame);
   lidar_->SetRangeThreshold(range_threshold);
@@ -54,6 +55,13 @@ LD06::LD06()
     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Can't open the serial port");
   }
 
+  updater_.setHardwareID("ld_laser");
+  auto tolerance = this->get_parameter("diagnostic_tolerance").as_double();
+  frequency_ = 10.0;
+
+  diagnosed_publisher_ = std::make_shared<diagnostic_updater::DiagnosedPublisher<sensor_msgs::msg::LaserScan>>(
+    pub, updater_, diagnostic_updater::FrequencyStatusParam(&frequency_, &frequency_, tolerance, 10),
+    diagnostic_updater::TimeStampStatusParam());
   loop_timer_ = this->create_wall_timer(
     100ms, 
     std::bind(&LD06::publishLoop, this)
@@ -64,7 +72,7 @@ void LD06::publishLoop()
 {
   if (lidar_->IsFrameReady())
   {
-    lidar_pub_->publish(lidar_->GetLaserScan());
+    diagnosed_publisher_->publish(lidar_->GetLaserScan());
     lidar_->ResetFrameReady();
   }
 }
