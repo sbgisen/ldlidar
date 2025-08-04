@@ -11,6 +11,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 
@@ -32,7 +33,7 @@ add_executable(ldlidar ${MAIN_SRC})
 target_include_directories(ldlidar PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(ldlidar sensor_msgs rclcpp diagnostic_updater)
+ament_target_dependencies(ldlidar sensor_msgs rclcpp diagnostic_updater rclcpp_lifecycle)
 target_link_libraries(ldlidar udev)
 
 install(TARGETS ldlidar
