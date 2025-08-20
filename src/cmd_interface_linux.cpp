@@ -83,18 +83,18 @@ bool CmdInterfaceLinux::Close()
     }
 
     mRxThreadExitFlag = true;
+    // Join thread first to ensure it is not using mComHandle
+    if ((mRxThread != nullptr) && mRxThread->joinable())
+    {
+        mRxThread->join();
+        delete mRxThread;
+        mRxThread = NULL;
+    }
 
     if (mComHandle != -1)
     {
         close(mComHandle);
         mComHandle = -1;
-    }
-
-    if ((mRxThread!=nullptr) && mRxThread->joinable())
-    {
-        mRxThread->join();
-        delete mRxThread;
-        mRxThread = NULL;
     }
 
     mIsCmdOpened = false;
@@ -150,7 +150,7 @@ bool CmdInterfaceLinux::ReadFromIO(uint8_t *rx_buf, uint32_t rx_buf_len, uint32_
     static timespec timeout = { 0, (long)(100 * 1e6) };
     int32_t len = -1;
 
-    if (IsOpened())
+    if (IsOpened() && mComHandle >= 0 && mComHandle < FD_SETSIZE)
     {
         fd_set read_fds;
         FD_ZERO(&read_fds);
